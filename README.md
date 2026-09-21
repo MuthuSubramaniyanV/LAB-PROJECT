@@ -136,17 +136,6 @@ backend/
 └── pytest.ini
 ```
 
-## 15. What is intentionally NOT included yet
-- React frontend
-- Tailwind
-- WhatsApp API integration
-- Meta webhooks
-- AI/Gemini features
-- APScheduler, Celery, Redis
-- Docker/Kubernetes deployment
-- Authentication and authorization
-- Analytics dashboard
-
 ## Run commands
 ```bash
 uvicorn app.main:app --reload
