@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     test_database_url: str | None = Field(default=None, alias="TEST_DATABASE_URL")
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
     enable_docs: bool = Field(default=True, alias="ENABLE_DOCS")
-    cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
+    cors_origins: str = Field(default="http://localhost:5173,http://127.0.0.1:5173", alias="CORS_ORIGINS")
     jwt_secret: str = Field(default="lab-local-secret", alias="JWT_SECRET")
 
     @property
