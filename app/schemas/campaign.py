@@ -9,11 +9,12 @@ class CampaignBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=150)
     description: str | None = Field(default=None, max_length=5000)
     target_days: int = Field(default=90, gt=0)
+    max_customers: int = Field(default=500, gt=0)
     test_type: str | None = Field(default=None, max_length=100)
     location: str | None = Field(default=None, max_length=100)
     offer_title: str | None = Field(default=None, max_length=150)
     offer_details: str | None = Field(default=None, max_length=5000)
-    status: str = Field(default="draft", max_length=30)
+    status: str = Field(default="DRAFT", max_length=30)
 
     @field_validator("name")
     @classmethod
@@ -33,6 +34,7 @@ class CampaignUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=150)
     description: str | None = Field(default=None, max_length=5000)
     target_days: int | None = Field(default=None, gt=0)
+    max_customers: int | None = Field(default=None, gt=0)
     test_type: str | None = Field(default=None, max_length=100)
     location: str | None = Field(default=None, max_length=100)
     offer_title: str | None = Field(default=None, max_length=150)

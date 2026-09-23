@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = Field(default="/api/v1", alias="API_V1_PREFIX")
     enable_docs: bool = Field(default=True, alias="ENABLE_DOCS")
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
+    jwt_secret: str = Field(default="lab-local-secret", alias="JWT_SECRET")
 
     @property
     def cors_origins_list(self) -> list[str]:

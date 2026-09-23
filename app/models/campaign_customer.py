@@ -21,7 +21,7 @@ class CampaignCustomer(Base):
     campaign_id: Mapped[str] = mapped_column(String(36), ForeignKey("campaigns.id"), nullable=False, index=True)
     customer_id: Mapped[str] = mapped_column(String(36), ForeignKey("customers.id"), nullable=False, index=True)
     segment_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending", server_default=text("'pending'"))
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="QUEUED", server_default=text("'QUEUED'"))
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
     __table_args__ = (UniqueConstraint("campaign_id", "customer_id", name="uq_campaign_customer"),)
