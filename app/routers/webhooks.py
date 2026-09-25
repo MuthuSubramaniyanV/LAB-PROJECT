@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status as http_status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
@@ -17,19 +18,25 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 @router.get("/whatsapp")
 def verify_whatsapp_webhook(
-    mode: str | None = Query(default=None),
-    verify_token: str | None = Query(default=None),
-    challenge: str | None = Query(default=None),
+    mode: str | None = Query(default=None, alias="hub.mode"),
+    verify_token: str | None = Query(default=None, alias="hub.verify_token"),
+    challenge: str | None = Query(default=None, alias="hub.challenge"),
 ):
     service = WhatsAppService()
     response = service.build_webhook_verification_response(mode, verify_token, challenge)
     if response is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Verification failed")
-    return response
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Verification failed")
+    return PlainTextResponse(response)
 
 
 @router.post("/whatsapp")
 async def handle_whatsapp_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
+    raw_body = await request.body()
+    signature = request.headers.get("x-hub-signature-256")
+    service = WhatsAppService()
+    if not service.is_valid_signature(raw_body, signature):
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Invalid webhook signature")
+
     try:
         payload = await request.json()
     except Exception:
@@ -38,7 +45,6 @@ async def handle_whatsapp_webhook(request: Request, db: Session = Depends(get_db
     if not isinstance(payload, dict):
         return {"status": "ignored"}
 
-    service = WhatsAppService()
     for entry in payload.get("entry") or []:
         for change in entry.get("changes") or []:
             value = change.get("value") or {}
@@ -58,30 +64,32 @@ async def handle_whatsapp_webhook(request: Request, db: Session = Depends(get_db
                     db.add(record)
                     if service.is_opt_out_message(text):
                         customer.consent_whatsapp = False
-                        opt_out = OptOut(
-                            customer_id=customer.id,
-                            phone=customer.phone,
-                            reason="STOP",
-                            source="whatsapp",
-                        )
-                        db.add(opt_out)
+                        existing_opt_out = db.query(OptOut).filter(OptOut.customer_id == customer.id, OptOut.source == "whatsapp").first()
+                        if existing_opt_out is None:
+                            opt_out = OptOut(
+                                customer_id=customer.id,
+                                phone=customer.phone,
+                                reason="STOP",
+                                source="whatsapp",
+                            )
+                            db.add(opt_out)
                     db.commit()
 
-            for status in value.get("statuses") or []:
-                whatsapp_id = status.get("id")
+            for status_event in value.get("statuses") or []:
+                whatsapp_id = status_event.get("id")
                 if not whatsapp_id:
                     continue
                 message = db.query(MessageLog).filter(MessageLog.whatsapp_message_id == whatsapp_id).first()
                 if message is None:
                     continue
-                message.status = str(status.get("status") or message.status).upper()
+                message.status = str(status_event.get("status") or message.status).upper()
                 if message.status == "DELIVERED":
                     message.delivered_at = datetime.utcnow()
                 elif message.status == "READ":
                     message.read_at = datetime.utcnow()
                 elif message.status == "FAILED":
-                    message.error_code = status.get("code")
-                    message.error_message = status.get("message")
+                    message.error_code = status_event.get("code")
+                    message.error_message = status_event.get("message")
                 db.commit()
 
     return {"status": "ok"}

@@ -29,7 +29,7 @@ def get_customer_service(db: Session = Depends(get_db)) -> CustomerService:
 @router.get("/inactive")
 def list_inactive_customers(
     days: int = Query(90, ge=1),
-    consent_whatsapp: bool | None = True,
+    consent_whatsapp: bool | None = None,
     location: str | None = None,
     test_type: str | None = None,
     page: int = Query(1, ge=1),
@@ -62,7 +62,7 @@ def segment_customers(
     days: int = Query(90, ge=1),
     test_type: str | None = None,
     location: str | None = None,
-    consent_whatsapp: bool | None = True,
+    consent_whatsapp: bool | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     service: CustomerService = Depends(get_customer_service),

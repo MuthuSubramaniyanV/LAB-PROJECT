@@ -28,7 +28,7 @@ class CampaignRepository:
         return items, total or 0
 
     def get_target_customers(self, *, target_days: int, test_type: str | None, location: str | None) -> list[Customer]:
-        statement = select(Customer).where(Customer.is_active.is_(True)).where(Customer.consent_whatsapp.is_(True))
+        statement = select(Customer).where(Customer.is_active.is_(True))
         if test_type:
             statement = statement.where(Customer.primary_test_type == test_type)
         if location:

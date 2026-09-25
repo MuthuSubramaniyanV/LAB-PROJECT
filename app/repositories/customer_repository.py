@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.customer import Customer
 from app.models.customer_visit import CustomerVisit
+from app.models.opt_out import OptOut
 
 
 class CustomerRepository:
@@ -44,7 +45,9 @@ class CustomerRepository:
     ) -> tuple[list[Customer], int]:
         cutoff = date.today() - timedelta(days=days)
         statement = select(Customer).where(Customer.last_visit.is_not(None)).where(Customer.last_visit < cutoff)
-        if consent_whatsapp is not None:
+        if consent_whatsapp is None:
+            statement = statement.where(~select(OptOut.id).where(OptOut.customer_id == Customer.id).exists())
+        else:
             statement = statement.where(Customer.consent_whatsapp.is_(consent_whatsapp))
         if location:
             statement = statement.where(Customer.location == location)
@@ -72,7 +75,9 @@ class CustomerRepository:
             statement = statement.where(Customer.primary_test_type == test_type)
         if location:
             statement = statement.where(Customer.location == location)
-        if consent_whatsapp is not None:
+        if consent_whatsapp is None:
+            statement = statement.where(~select(OptOut.id).where(OptOut.customer_id == Customer.id).exists())
+        else:
             statement = statement.where(Customer.consent_whatsapp.is_(consent_whatsapp))
         statement = statement.order_by(Customer.last_visit.asc())
 

@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     enable_docs: bool = Field(default=True, alias="ENABLE_DOCS")
     cors_origins: str = Field(default="http://localhost:5173,http://127.0.0.1:5173", alias="CORS_ORIGINS")
     jwt_secret: str = Field(default="lab-local-secret", alias="JWT_SECRET")
+    whatsapp_access_token: str | None = Field(default=None, alias="WHATSAPP_ACCESS_TOKEN")
+    whatsapp_phone_number_id: str | None = Field(default=None, alias="WHATSAPP_PHONE_NUMBER_ID")
+    whatsapp_verify_token: str | None = Field(default=None, alias="WHATSAPP_VERIFY_TOKEN")
+    whatsapp_app_secret: str | None = Field(default=None, alias="WHATSAPP_APP_SECRET")
+    whatsapp_business_account_id: str | None = Field(default=None, alias="WHATSAPP_BUSINESS_ACCOUNT_ID")
+    whatsapp_api_version: str = Field(default="v18.0", alias="WHATSAPP_API_VERSION")
 
     @property
     def cors_origins_list(self) -> list[str]:
