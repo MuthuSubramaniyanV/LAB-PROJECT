@@ -94,6 +94,16 @@ class WhatsAppService:
             parameters = [{"type": "text", "text": str(value)} for key, value in variables.items()]
             body["template"]["components"] = [{"type": "body", "parameters": parameters}]
 
+        logger.info(
+            "WhatsApp template request prepared",
+            extra={
+                "template_name": body["template"]["name"],
+                "language": body["template"]["language"]["code"],
+                "has_components": bool(body["template"].get("components")),
+                "component_count": len(body["template"].get("components", [])),
+            },
+        )
+
         url = f"{self.get_base_url()}/{self.phone_number_id}/messages"
         headers = {
             "Authorization": f"Bearer {self.access_token}",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from typing import Annotated
 
@@ -107,10 +108,11 @@ def send_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     template_id = (payload or {}).get("template_id") if isinstance(payload, dict) else None
-    template = None
     if template_id:
         template = db.get(MessageTemplate, template_id)
-    if template is None:
+        if template is None:
+            raise HTTPException(status_code=404, detail="Template not found")
+    else:
         template = db.query(MessageTemplate).filter(MessageTemplate.status == "ACTIVE").order_by(MessageTemplate.created_at.desc()).first()
     if template is None:
         raise HTTPException(status_code=404, detail="No active WhatsApp template available")
@@ -150,21 +152,34 @@ def send_campaign(
             continue
 
         try:
-            variables = {
+            variable_values = {
                 "customer_name": customer.name,
                 "test_type": customer.primary_test_type or "your test",
                 "lab_name": "Lab Flow",
                 "inactive_days": str(max(1, (datetime.utcnow().date() - (customer.last_visit or datetime.utcnow().date())).days if customer.last_visit else 30)),
             }
-            rendered_template = whatsapp_service.prepare_template_message(template.template_content, variables)
+            placeholder_names = re.findall(r"{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}", template.template_content)
+            template_variables = {
+                name: variable_values[name]
+                for name in dict.fromkeys(placeholder_names)
+                if name in variable_values
+            }
+            logger.info(
+                "WhatsApp campaign template selected",
+                extra={
+                    "requested_template_id": template_id,
+                    "template_id": template.id,
+                    "db_template_name": template.name,
+                    "meta_template_name": template.meta_template_name,
+                    "db_language": template.language,
+                    "customer_id": customer.id,
+                },
+            )
             body = whatsapp_service.send_template_message(
                 to_phone=customer.phone,
                 template_name=template.meta_template_name or template.name,
                 language=template.language or "en_US",
-                variables={
-                    "customer_name": customer.name,
-                    "test_type": customer.primary_test_type or "your test",
-                },
+                variables=template_variables or None,
             )
             provider_id = None
             messages = body.get("messages") if isinstance(body, dict) else []

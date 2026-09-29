@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 from app.core.config import settings
@@ -22,7 +23,22 @@ def test_whatsapp_settings_load_from_environment(monkeypatch):
     assert fresh.whatsapp_api_version == "v19.0"
 
 
-def test_campaign_send_skips_opted_out_and_invalid_phone(client):
+def test_campaign_send_uses_selected_meta_template_and_language(client, monkeypatch):
+    requests = []
+
+    class FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"messages": [{"id": "wamid.test"}]}
+
+    def fake_post(url, *, headers, content, timeout):
+        requests.append(json.loads(content))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.services.whatsapp_service.httpx.post", fake_post)
+
     login = client.post("/api/v1/auth/login", json={"email": "admin@lab.local", "password": "admin123"})
     token = login.json()["access_token"]
 
@@ -76,11 +92,11 @@ def test_campaign_send_skips_opted_out_and_invalid_phone(client):
         "/api/v1/templates",
         headers={"Authorization": f"Bearer {token}"},
         json={
-            "name": "welcome_followup",
-            "language": "en",
+            "name": "dental_health_reminder",
+            "language": "en_US",
             "category": "MARKETING",
-            "template_content": "Hi {{customer_name}}, we invite you for {{test_type}}.",
-            "meta_template_name": "welcome_followup",
+            "template_content": "Welcome and congratulations!",
+            "meta_template_name": "hello_world",
             "status": "ACTIVE",
         },
     )
@@ -104,6 +120,48 @@ def test_campaign_send_skips_opted_out_and_invalid_phone(client):
     assert body["total"] >= 1
     assert body["skipped"] >= 1
     assert body["failed"] >= 0
+    assert body["sent"] == 1
+    assert requests == [
+        {
+            "messaging_product": "whatsapp",
+            "to": "+15550000021",
+            "type": "template",
+            "template": {
+                "name": "hello_world",
+                "language": {"code": "en_US"},
+            },
+        }
+    ]
+
+
+def test_campaign_send_does_not_fallback_when_requested_template_is_missing(client):
+    login = client.post("/api/v1/auth/login", json={"email": "admin@lab.local", "password": "admin123"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    template = client.post(
+        "/api/v1/templates",
+        headers=headers,
+        json={
+            "name": "active_template",
+            "template_content": "Hello",
+            "status": "ACTIVE",
+        },
+    )
+    assert template.status_code == 201, template.text
+    campaign = client.post(
+        "/api/v1/campaigns",
+        headers=headers,
+        json={"name": "Template lookup", "target_days": 90},
+    )
+    assert campaign.status_code == 201, campaign.text
+
+    response = client.post(
+        f"/api/v1/campaigns/{campaign.json()['id']}/send",
+        headers=headers,
+        json={"template_id": "missing-template-id"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Template not found"
 
 
 def test_whatsapp_verification_and_signature_guard(client):
