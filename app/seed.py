@@ -184,12 +184,18 @@ def seed_customer_visits(db: Session, customers: list[Customer]) -> int:
             customer.last_visit = visit.visit_date
     return inserted
 
-
 def seed_templates(db: Session) -> list[MessageTemplate]:
     templates = []
-    for idx, (name, content) in enumerate(TEMPLATE_CONTENT.items(), start=1):
-        existing = db.query(MessageTemplate).filter(MessageTemplate.name == name).first()
+
+    for name, content in TEMPLATE_CONTENT.items():
+        existing = (
+            db.query(MessageTemplate)
+            .filter(MessageTemplate.name == name)
+            .first()
+        )
+
         if existing is None:
+            # Create demo templates only if they don't already exist.
             template = MessageTemplate(
                 id=str(uuid4()),
                 name=name,
@@ -203,12 +209,15 @@ def seed_templates(db: Session) -> list[MessageTemplate]:
             db.flush()
             templates.append(template)
         else:
-            existing.language = "en"
-            existing.category = "MARKETING"
+            # IMPORTANT:
+            # Do not overwrite Meta WhatsApp configuration here.
+            # It may have been configured from Meta/WhatsApp Manager.
+            existing.category = existing.category or "MARKETING"
             existing.template_content = content
-            existing.meta_template_name = name
-            existing.status = "ACTIVE"
+            existing.status = existing.status or "ACTIVE"
+
             templates.append(existing)
+
     return templates
 
 
