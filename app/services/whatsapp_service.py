@@ -95,7 +95,11 @@ class WhatsAppService:
             body["template"]["components"] = [{"type": "body", "parameters": parameters}]
 
         logger.info(
-            "WhatsApp template request prepared",
+            "WhatsApp template request prepared template_name=%s language=%s has_components=%s component_count=%s",
+            body["template"]["name"],
+            body["template"]["language"]["code"],
+            bool(body["template"].get("components")),
+            len(body["template"].get("components", [])),
             extra={
                 "template_name": body["template"]["name"],
                 "language": body["template"]["language"]["code"],

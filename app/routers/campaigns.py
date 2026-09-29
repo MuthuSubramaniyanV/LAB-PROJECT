@@ -165,7 +165,13 @@ def send_campaign(
                 if name in variable_values
             }
             logger.info(
-                "WhatsApp campaign template selected",
+                "WhatsApp campaign template selected requested_template_id=%s template_id=%s db_template_name=%s meta_template_name=%s db_language=%s customer_id=%s",
+                template_id,
+                template.id,
+                template.name,
+                template.meta_template_name,
+                template.language,
+                customer.id,
                 extra={
                     "requested_template_id": template_id,
                     "template_id": template.id,
